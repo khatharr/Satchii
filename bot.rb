@@ -2,6 +2,7 @@
 require 'net/http'
 require 'discordrb'
 require 'similar_text'
+require 'erb'
 
 def say(event, msg)
   event.respond(msg) if event.channel.name == "botdev"
@@ -132,28 +133,28 @@ end
 bot = startup
 
 bot.command(:anime, { :description => "Searches MAL for your query. (Ex: !anime haruhi)" }) do |event, *args|
-  say(event, searchMAL(args.join('%20')))
+  say(event, searchMAL(ERB::Util.url_encode(args.join(' '))))
   nil
 end
 
 bot.command(:wiki, { :description => "Searches Wikipedia for your query. (Ex: !wiki the internet)" }) do |event, *args|
-  say(event, wikipedia(args.join('_')))
+  say(event, wikipedia(ERB::Util.url_encode(args.join(' '))))
   nil
 end
 
 bot.command(:google, { :description => "Provides a google search link. (Ex: !google cat videos)" }) do |event, *args|
-  say(event, google(args.join('%20')))
+  say(event, google(ERB::Util.url_encode(args.join(' '))))
   nil
 end
 
 bot.command(:steam, { :description => "Searches Steam for a title. (Ex: !steam crosscode)" }) do |event, *args|
   refreshDB(event) if Time.now > (File.mtime("applist.txt") + (60 * 60 * 12))
-  say(event, searchApps(args.join(' ')))
+  say(event, searchApps(ERB::Util.url_encode(args.join(' '))))
   nil
 end
 
 bot.command(:youtube, { :description => "Return top search result from Youtube. (ex: !youtube dramatic chipmunk)" }) do |event, *args|
-  say(event, youtube(args.join('%20')))
+  say(event, youtube(ERB::Util.url_encode(args.join(' '))))
   nil
 end
 
