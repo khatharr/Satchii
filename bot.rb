@@ -4,36 +4,36 @@ require 'discordrb'
 require 'similar_text'
 
 def youtube(query)
-  dardar = Net::HTTP.get(URI("https://www.youtube.com/results?search_query=#{query}"))
+  url = "https://www.youtube.com/results?search_query=#{query}"
   
-  if dardar =~ /<a href="(\/watch\?v=.*?)"/
-    "https://www.youtube.com#{$1}"
-  else
-    nil
+  if Net::HTTP.get(URI(url)) =~ /<a href="(\/watch\?v=.*?)"/
+    return "https://www.youtube.com#{$1}"
   end
+  
+  return nil
 end
 
 def wikipedia(query)
-  puts "-" * 70
-  
-  uri = URI("https://en.wikipedia.org/w/api.php?action=query&redirects&format=xml&titles=#{query}")
-  doota = Net::HTTP.get(uri)
+  url = "https://en.wikipedia.org/w/api.php?action=query&redirects&format=xml&titles=#{query}"
+
+  data = Net::HTTP.get(URI(url))
   
   idx = -1
   title = ""
-  if doota =~ /_idx="(\d*?)"/
+  if data =~ /_idx="(\d*?)"/
     idx = $1.to_i
   end
-  if doota =~ /title="(.*?)"/
+  if data =~ /title="(.*?)"/
     title = $1.gsub(' ', '_')
   end
   
   return "Not found." if idx == -1
   
-  return "https://en.wikipedia.org/wiki/" + title
+  return "https://en.wikipedia.org/wiki/#{title}"
 end
 
 def loadApps
+  puts "Loading DB."
   data = File.read('applist.txt', :encoding => 'UTF-8')
   lines = data.split("\n")
 
@@ -60,26 +60,47 @@ def searchApps(query)
       break if score == 100
     end
   end
+  
   if winner == -1
     return "Not found."
   end
+  
   return "http://store.steampowered.com/app/#{winner}"
 end
 
-def refreshDB
+def searchMAL(query)
+  url = "http://myanimelist.net/anime.php?q=#{query}"
+  
+  if Net::HTTP.get(URI(url)) =~ /id\=\"sarea(\d*?)\"/
+    return "http://myanimelist.net/anime/#{$1}"
+  end
+  
+  return "Not found."
+end
+
+def google(query)
+  return "https://www.google.com/search?q=#{query}&ie=utf-8&oe=utf-8"
+end
+
+def refreshDB(event)
   puts "#{Time.now}: Attempting refresh..."
+  event.respond("Attempting DB refresh.") if event.channel.name == "botdev"
   data = Net::HTTP.get(URI("http://api.steampowered.com/ISteamApps/GetAppList/v2"))
   if data.size == 0
     puts "Refresh failed!"
+    event.respond("Refresh failed!") if event.channel.name == "botdev"
     return false
   end
   open("applist.txt", "wb") { |f| f.write(data) }
   puts "Success."
+  event.respond("Success.") if event.channel.name == "botdev"
+  event.respond("Reloading DB.") if event.channel.name == "botdev"
   loadApps
   return true
 end
 
 def loadCredentials
+  puts "Loading credentials."
   lines = []
   open("credentials.dat", "rb") { |f| lines = f.readlines }
   for line in lines
@@ -93,92 +114,53 @@ end
 def startup
   loadCredentials
   loadApps
+  
+  bot = Discordrb::Commands::CommandBot.new token: $token, application_id: $appid, prefix: '!'
+  bot.set_user_permission($adminID, 10)
+  
+  puts "This bot's invite URL is: \n#{bot.invite_url}"
+  puts "-" * 75
+  return bot
 end
 
 ##########################################
 
-startup
-
-bot = Discordrb::Commands::CommandBot.new token: $token, application_id: $appid, prefix: '!'
-puts "This bot's invite URL is: \n#{bot.invite_url}"
-puts "-" * 75
+bot = startup
 
 bot.command(:anime, { :description => "Searches MAL for your query. (Ex: !anime haruhi)" }) do |event, *args|
-  if event.channel.name == "botdev"
-    derta = Net::HTTP.get(URI("http://myanimelist.net/anime.php?q=#{args.join('%20')}"))
-    if derta =~ /id\=\"sarea(\d*?)\"/
-      aid = $1
-      event.respond("http://myanimelist.net/anime/" + aid)
-    else
-      event.respond("Not found.")
-    end
-  else
-    nil
-  end
-end
-
-bot.command(:wiki, { :description => "Searches Wikipedia for your query. [improvements pending] (Ex: !wiki the internet)" }) do |event, *args|
-  if event.channel.name == "botdev"
-    event.respond(wikipedia(args.join('_')))
-  else
-    nil
-  end
-end
-
-bot.command(:google, { :description => "Provides a google search link. (Ex: !google cat videos)" }) do |event, *args|
-  if event.channel.name == "botdev"
-    event.respond("https://www.google.com/search?q=" + args.join('%20'))
-  else
-    nil
-  end
-end
-
-bot.command(:steam, { :description => "Searches Steam for a title. (Ex: !steam crosscode)" }) do |event, *args|
-  if Time.now > (File.mtime("applist.txt") + (60 * 60 * 12))
-    event.respond("Attempting DB refresh.") if event.channel.name == "botdev"
-    if refreshDB
-      event.respond("OK.") if event.channel.name == "botdev"
-    else
-      event.respond("Failed.") if event.channel.name == "botdev"
-    end
-  end
-  if event.channel.name == "botdev"
-    searchApps(args.join(' '))
-  else
-    nil
-  end
-end
-
-bot.command(:play, { :help_available => false }) do |event, *args|
-  if event.author.id == $adminID
-    bot.game = args.join(' ')
-    event.respond("OK.") if event.channel.name == "botdev"
-  else
-    event.respond("You are not authorized.") if event.channel.name == "botdev"
-  end
+  event.respond(searchMAL(args.join('%20'))) if event.channel.name == "botdev"
   nil
 end
 
-bot.command(:refresh, { :help_available => false }) do |event|
-  if event.author.id == $adminID
-    event.respond("Attempting DB refresh.") if event.channel.name == "botdev"
-    if refreshDB
-      event.respond("OK.") if event.channel.name == "botdev"
-    else
-      event.respond("Failed.") if event.channel.name == "botdev"
-    end
-  else
-    event.respond("You are not authorized.") if event.channel.name == "botdev"
-  end
+bot.command(:wiki, { :description => "Searches Wikipedia for your query. (Ex: !wiki the internet)" }) do |event, *args|
+  event.respond(wikipedia(args.join('_'))) if event.channel.name == "botdev"
+  nil
+end
+
+bot.command(:google, { :description => "Provides a google search link. (Ex: !google cat videos)" }) do |event, *args|
+  event.respond(google(args.join('%20'))) if event.channel.name == "botdev"
+  nil
+end
+
+bot.command(:steam, { :description => "Searches Steam for a title. (Ex: !steam crosscode)" }) do |event, *args|
+  refreshDB(event) if Time.now > (File.mtime("applist.txt") + (60 * 60 * 12))
+  event.respond(searchApps(args.join(' '))) if event.channel.name == "botdev"
   nil
 end
 
 bot.command(:youtube, { :description => "Return top search result from Youtube. (ex: !youtube dramatic chipmunk)" }) do |event, *args|
-  if event.channel.name == "botdev"
-    youtube(args.join('%20'))
-  else
-    nil
-  end
+  event.respond(youtube(args.join('%20'))) if event.channel.name == "botdev"
+  nil
+end
+
+bot.command(:play, { :help_available => false,  :permission_level => 10 }) do |event, *args|
+  bot.game = args.join(' ')
+  nil
+end
+
+bot.command(:refresh, { :help_available => false,  :permission_level => 10 }) do |event|
+  refreshDB(event)
+  nil
 end
 
 bot.run :async
