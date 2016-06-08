@@ -3,6 +3,10 @@ require 'net/http'
 require 'discordrb'
 require 'similar_text'
 
+def say(event, msg)
+  event.respond(msg) if event.channel.name == "botdev"
+end
+
 def youtube(query)
   url = "https://www.youtube.com/results?search_query=#{query}"
   
@@ -84,17 +88,17 @@ end
 
 def refreshDB(event)
   puts "#{Time.now}: Attempting refresh..."
-  event.respond("Attempting DB refresh.") if event.channel.name == "botdev"
+  say(event, "Attempting DB refresh.")
   data = Net::HTTP.get(URI("http://api.steampowered.com/ISteamApps/GetAppList/v2"))
   if data.size == 0
     puts "Refresh failed!"
-    event.respond("Refresh failed!") if event.channel.name == "botdev"
+    say(event, "Refresh failed!")
     return false
   end
   open("applist.txt", "wb") { |f| f.write(data) }
   puts "Success."
-  event.respond("Success.") if event.channel.name == "botdev"
-  event.respond("Reloading DB.") if event.channel.name == "botdev"
+  say(event, "Success.")
+  say(event, "Reloading DB.")
   loadApps
   return true
 end
@@ -128,28 +132,28 @@ end
 bot = startup
 
 bot.command(:anime, { :description => "Searches MAL for your query. (Ex: !anime haruhi)" }) do |event, *args|
-  event.respond(searchMAL(args.join('%20'))) if event.channel.name == "botdev"
+  say(event, searchMAL(args.join('%20')))
   nil
 end
 
 bot.command(:wiki, { :description => "Searches Wikipedia for your query. (Ex: !wiki the internet)" }) do |event, *args|
-  event.respond(wikipedia(args.join('_'))) if event.channel.name == "botdev"
+  say(event, wikipedia(args.join('_')))
   nil
 end
 
 bot.command(:google, { :description => "Provides a google search link. (Ex: !google cat videos)" }) do |event, *args|
-  event.respond(google(args.join('%20'))) if event.channel.name == "botdev"
+  say(event, google(args.join('%20')))
   nil
 end
 
 bot.command(:steam, { :description => "Searches Steam for a title. (Ex: !steam crosscode)" }) do |event, *args|
   refreshDB(event) if Time.now > (File.mtime("applist.txt") + (60 * 60 * 12))
-  event.respond(searchApps(args.join(' '))) if event.channel.name == "botdev"
+  say(event, searchApps(args.join(' ')))
   nil
 end
 
 bot.command(:youtube, { :description => "Return top search result from Youtube. (ex: !youtube dramatic chipmunk)" }) do |event, *args|
-  event.respond(youtube(args.join('%20'))) if event.channel.name == "botdev"
+  say(event, youtube(args.join('%20')))
   nil
 end
 
