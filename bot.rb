@@ -5,7 +5,7 @@ require 'similar_text'
 require 'erb'
 
 def say(event, msg)
-  event.respond(msg) if event.channel.name == "botdev"
+  event.respond(msg) if $chans.include?(event.channel.id)
 end
 
 def youtube(query)
@@ -87,6 +87,11 @@ def google(query)
   return "https://www.google.com/search?q=#{query}&ie=utf-8&oe=utf-8"
 end
 
+def lmgtfy(query)
+  return "http://lmgtfy.com/?q=#{query}"
+end
+
+
 def refreshDB(event)
   puts "#{Time.now}: Attempting refresh..."
   say(event, "Attempting DB refresh.")
@@ -132,7 +137,7 @@ end
 
 bot = startup
 
-bot.command(:anime, { :description => "Searches MAL for your query. (Ex: !anime haruhi)" }) do |event, *args|
+bot.command(:anime, { :description => "Searches MAL for your query (Ex: !anime haruhi)" }) do |event, *args|
   say(event, searchMAL(ERB::Util.url_encode(args.join(' '))))
   nil
 end
@@ -144,6 +149,11 @@ end
 
 bot.command(:google, { :description => "Provides a google search link. (Ex: !google cat videos)" }) do |event, *args|
   say(event, google(ERB::Util.url_encode(args.join(' '))))
+  nil
+end
+
+bot.command(:lmgtfy, { :description => "Google it." }) do |event, *args|
+  say(event, lmgtfy(ERB::Util.url_encode(args.join(' '))))
   nil
 end
 
@@ -168,7 +178,14 @@ bot.command(:refresh, { :help_available => false,  :permission_level => 10 }) do
   nil
 end
 
-bot.run :async
+bot.command(:restart, { :help_available => false,  :permission_level => 10 }) do |event|
+  say(event, "Rebooting.")
+  bot.stop
+end
+
+bot.run_async
 bot.game = "!help for commands"
+$chans = bot.find_channel("botdev") #+ bot.find_channel("lounge")
+bot.send_message($chans[0], "Boku Satchii!")
 bot.sync
 
