@@ -4,11 +4,19 @@ require 'discordrb'
 require 'similar_text'
 require 'erb'
 
+$COMMAND_TOKEN = '~'
+$AUTHED_ROOMS = [
+  "botdev",
+  "lounge"
+]
+
 def say(event, msg)
   event.respond(msg) if $chans.include?(event.channel.id)
 end
 
 def youtube(query)
+  return "Temporarily disabled."
+  
   url = "https://www.youtube.com/results?search_query=#{query}"
   
   if Net::HTTP.get(URI(url)) =~ /<a href="(\/watch\?v=.*?)"/
@@ -125,7 +133,7 @@ def startup
   loadCredentials
   loadApps
   
-  bot = Discordrb::Commands::CommandBot.new token: $token, application_id: $appid, prefix: '~'
+  bot = Discordrb::Commands::CommandBot.new token: $token, application_id: $appid, prefix: $COMMAND_TOKEN
   bot.set_user_permission($adminID, 10)
   
   puts "This bot's invite URL is: \n#{bot.invite_url}"
@@ -137,55 +145,68 @@ end
 
 bot = startup
 
-bot.command(:anime, { :description => "Searches MAL for your query (Ex: !anime dennou coil)" }) do |event, *args|
+bot.command(:anime, { :description => "Searches MAL for your query (Ex: #{$COMMAND_TOKEN}anime dennou coil)" }) do |event, *args|
+  puts "#{Time.now} - #{event.author.name}: anime #{args.join(' ')}"
   say(event, searchMAL(ERB::Util.url_encode(args.join(' '))))
   nil
 end
 
-bot.command(:wiki, { :description => "Searches Wikipedia for your query. (Ex: !wiki the internet)" }) do |event, *args|
+bot.command(:wiki, { :description => "Searches Wikipedia for your query. (Ex: #{$COMMAND_TOKEN}wiki the internet)" }) do |event, *args|
+  puts "#{Time.now} - #{event.author.name}: wiki #{args.join(' ')}"
   say(event, wikipedia(ERB::Util.url_encode(args.join(' '))))
   nil
 end
 
-bot.command(:google, { :description => "Provides a google search link. (Ex: !google cat videos)" }) do |event, *args|
+bot.command(:google, { :description => "Provides a google search link. (Ex: #{$COMMAND_TOKEN}google cat videos)" }) do |event, *args|
+  puts "#{Time.now} - #{event.author.name}: google #{args.join(' ')}"
   say(event, google(ERB::Util.url_encode(args.join(' '))))
   nil
 end
 
 bot.command(:lmgtfy, { :description => "Google it." }) do |event, *args|
+  puts "#{Time.now} - #{event.author.name}: lmgtfy #{args.join(' ')}"
   say(event, lmgtfy(ERB::Util.url_encode(args.join(' '))))
   nil
 end
 
-bot.command(:steam, { :description => "Searches Steam for a title. (Ex: !steam crosscode)" }) do |event, *args|
+bot.command(:steam, { :description => "Searches Steam for a title. (Ex: #{$COMMAND_TOKEN}steam crosscode)" }) do |event, *args|
+  puts "#{Time.now} - #{event.author.name}: steam #{args.join(' ')}"
   refreshDB(event) if Time.now > (File.mtime("applist.txt") + (60 * 60 * 12))
   say(event, searchApps(ERB::Util.url_encode(args.join(' '))))
   nil
 end
 
-bot.command(:youtube, { :description => "Return top search result from Youtube. (ex: !youtube dramatic chipmunk)" }) do |event, *args|
+bot.command(:youtube, { :help_available => false, :description => "Return top search result from Youtube. (Ex: #{$COMMAND_TOKEN}youtube dramatic chipmunk)" }) do |event, *args|
+  puts "#{Time.now} - #{event.author.name}: youtube #{args.join(' ')}"
   say(event, youtube(ERB::Util.url_encode(args.join(' '))))
   nil
 end
 
 bot.command(:play, { :help_available => false,  :permission_level => 10 }) do |event, *args|
+  puts "#{Time.now} - #{event.author.name}: play #{args.join(' ')}"
   bot.game = args.join(' ')
   nil
 end
 
 bot.command(:refresh, { :help_available => false,  :permission_level => 10 }) do |event|
+  puts "#{Time.now} - #{event.author.name}: refresh"
   refreshDB(event)
   nil
 end
 
 bot.command(:restart, { :help_available => false,  :permission_level => 10 }) do |event|
+  puts "#{Time.now} - #{event.author.name}: restart"
   say(event, "Rebooting.")
   bot.stop
+  puts "-" * 75
 end
 
 bot.run_async
-bot.game = "~help for commands"
-$chans = bot.find_channel("botdev") #+ bot.find_channel("lounge")
+bot.game = $COMMAND_TOKEN + "help for commands"
+$chans = []
+for room in $AUTHED_ROOMS
+  $chans += bot.find_channel(room)
+end
 bot.send_message($chans[0], "Boku Saatchi!") unless $chans.empty?
 bot.sync
 
