@@ -125,7 +125,7 @@ def startup
   loadCredentials
   loadApps
   
-  bot = Discordrb::Commands::CommandBot.new token: $token, application_id: $appid, prefix: '!'
+  bot = Discordrb::Commands::CommandBot.new token: $token, application_id: $appid, prefix: '~'
   bot.set_user_permission($adminID, 10)
   
   puts "This bot's invite URL is: \n#{bot.invite_url}"
@@ -137,7 +137,7 @@ end
 
 bot = startup
 
-bot.command(:anime, { :description => "Searches MAL for your query (Ex: !anime haruhi)" }) do |event, *args|
+bot.command(:anime, { :description => "Searches MAL for your query (Ex: !anime dennou coil)" }) do |event, *args|
   say(event, searchMAL(ERB::Util.url_encode(args.join(' '))))
   nil
 end
@@ -184,8 +184,8 @@ bot.command(:restart, { :help_available => false,  :permission_level => 10 }) do
 end
 
 bot.run_async
-bot.game = "!help for commands"
+bot.game = "~help for commands"
 $chans = bot.find_channel("botdev") #+ bot.find_channel("lounge")
-bot.send_message($chans[0], "Boku Satchii!")
+bot.send_message($chans[0], "Boku Saatchi!") unless $chans.empty?
 bot.sync
 
