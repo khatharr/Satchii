@@ -6,8 +6,9 @@ require 'erb'
 
 $COMMAND_TOKEN = '~'
 $AUTHED_ROOMS = [
+  "gamedev",
   "botdev",
-  "lounge"
+  "junk"
 ]
 
 def say(event, msg)
@@ -96,7 +97,7 @@ def google(query)
 end
 
 def lmgtfy(query)
-  return "http://lmgtfy.com/?q=#{query}"
+  return "<http://lmgtfy.com/?q=#{query}>"
 end
 
 
@@ -135,6 +136,7 @@ def startup
   
   bot = Discordrb::Commands::CommandBot.new token: $token, application_id: $appid, prefix: $COMMAND_TOKEN
   bot.set_user_permission($adminID, 10)
+  bot.set_user_permission(186821294455652352, -1)
   
   puts "This bot's invite URL is: \n#{bot.invite_url}"
   puts "-" * 75
