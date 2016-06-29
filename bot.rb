@@ -6,8 +6,9 @@ require 'erb'
 
 $COMMAND_TOKEN = '~'
 $AUTHED_ROOMS = [
-  "gamedev",
+  "lounge",
   "botdev",
+  "gamedev",
   "junk"
 ]
 
@@ -209,6 +210,6 @@ $chans = []
 for room in $AUTHED_ROOMS
   $chans += bot.find_channel(room)
 end
-bot.send_message($chans[0], "Boku Saatchi!") unless $chans.empty?
+bot.send_message($chans[0], "Boku Saatchi! Yoroshiku ne?") unless $chans.empty?
 bot.sync
 
