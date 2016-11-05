@@ -1,0 +1,8 @@
+#!/bin/bash
+
+echo $$ > /var/run/saatchi.pid
+
+while true
+do
+  ruby /usr/bin/saatchi/bot.rb
+done
