@@ -5,7 +5,10 @@ require 'discordrb'
 require 'similar_text'
 require 'erb'
 
-$COMMAND_TOKEN = '~'
+$COMMAND_TOKEN = '+'
+
+$BOTBAN_ROLE_NAME = "Dunce"
+
 $AUTHED_ROOMS = [
   "botdev",
   "lounge",
@@ -16,6 +19,10 @@ $AUTHED_ROOMS = [
 $pidfile = "/var/run/saatchi.pid"
 
 def say(event, msg)
+  for role in event.author.roles
+    return nil if role.name == $BOTBAN_ROLE_NAME
+  end
+    
   event.respond(msg) if $chans.include?(event.channel.id)
 end
 
