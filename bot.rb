@@ -1,5 +1,6 @@
 # encoding: utf-8
 # http://www.rubydoc.info/gems/discordrb/
+# http://www.rubydoc.info/gems/similar_text/
 require 'net/http'
 require 'discordrb'
 require 'similar_text'
@@ -78,7 +79,8 @@ def searchApps(query)
   score = 0
   winner = -1
   for k,v in $apps
-    sc = v.downcase.similar(query.downcase)
+    short = v.downcase.slice(0, query.length + 4)
+    sc = short.similar(query.downcase)
     if sc > score
       score = sc
       winner = k
