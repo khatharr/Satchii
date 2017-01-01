@@ -9,22 +9,30 @@ require 'erb'
 $COMMAND_TOKEN = '+'
 
 $BOTBAN_ROLE_NAME = "Dunce"
+$MEMBER_ROLE_NAME = "Members"
 
 $AUTHED_ROOMS = [
-  "botdev",
+  "junk",
   "lounge",
-  "gamedev",
-  "junk"
+  "gamedev"
 ]
 
 $pidfile = "/var/run/saatchi.pid"
 
 def say(event, msg)
+  okay = false
+  
   for role in event.author.roles
     return nil if role.name == $BOTBAN_ROLE_NAME
+    if role.name == $MEMBER_ROLE_NAME
+      okay = true
+      break
+    end
   end
-    
-  event.respond(msg) if $chans.include?(event.channel.id)
+  
+  if okay
+    event.respond(msg) if $chans.include?(event.channel.id)
+  end
 end
 
 def youtube(query)
@@ -95,11 +103,11 @@ def searchApps(query)
   return "http://store.steampowered.com/app/#{winner}"
 end
 
-def searchMAL(query)
-  url = "https://myanimelist.net/anime.php?q=#{query}"
+def searchAP(query)
+  url = "http://www.anime-planet.com/anime/all?name=#{query}"
 
-  if Net::HTTP.get(URI(url)) =~ /sarea(\d+)/
-    return "http://myanimelist.net/anime/#{$1}"
+  if Net::HTTP.get(URI(url)) =~ /href=\"\/anime\/(.*?)\" class=\"tooltip anime/
+    return "http://www.anime-planet.com/anime/#{$1}"
   end
   
   return "Not found."
@@ -165,7 +173,7 @@ bot = startup
 
 bot.command(:anime, { :description => "Searches MAL for your query (Ex: #{$COMMAND_TOKEN}anime dennou coil)" }) do |event, *args|
   puts "#{Time.now} - #{event.author.name}: anime #{args.join(' ')}"
-  say(event, searchMAL(ERB::Util.url_encode(args.join(' '))))
+  say(event, searchAP(ERB::Util.url_encode(args.join(' '))))
   nil
 end
 
