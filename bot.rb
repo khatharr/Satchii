@@ -11,6 +11,8 @@ $COMMAND_TOKEN = '+'
 $BOTBAN_ROLE_NAME = "Dunce"
 $MEMBER_ROLE_NAME = "Members"
 
+$INSPIRE_DELAY_SECONDS = 30
+
 $AUTHED_ROOMS = [
   "junk",
   "lounge",
@@ -35,8 +37,13 @@ def say(event, msg)
   end
 end
 
+def inspire
+  url = "http://inspirobot.me/api?generate=true"
+  return Net::HTTP.get(URI(url))
+end
+
 def youtube(query)
-  return "Temporarily disabled."
+  return "disabled"
   
   url = "https://www.youtube.com/results?search_query=#{query}"
   
@@ -68,7 +75,7 @@ end
 
 def loadApps
   puts "Loading DB."
-  data = File.read('/usr/bin/saatchi/applist.txt', :encoding => 'UTF-8')
+  data = File.read('/home/pi/satchii/applist.txt', :encoding => 'UTF-8')
   lines = data.split("\n")
 
   $apps = {}
@@ -104,9 +111,15 @@ def searchApps(query)
 end
 
 def searchAP(query)
-  url = "http://www.anime-planet.com/anime/all?name=#{query}"
-
-  if Net::HTTP.get(URI(url)) =~ /href=\"\/anime\/(.*?)\" class=\"tooltip anime/
+  searchURL = "http://www.anime-planet.com/anime/all?name=#{query}"
+  
+  resp = Net::HTTP.get_response(URI(searchURL))
+  
+  if resp.code == '302'
+    return "http://www.anime-planet.com" + resp.header['location']
+  end
+  
+  if resp.body =~ /href=\"\/anime\/(.*?)\" class=\"tooltip anime/
     return "http://www.anime-planet.com/anime/#{$1}"
   end
   
@@ -128,17 +141,17 @@ end
 
 def refreshDB(event)
   puts "#{Time.now}: Attempting refresh..."
-  say(event, "Attempting DB refresh.")
+  say(event, "Refreshing database. Please wait a moment...")
   data = Net::HTTP.get(URI("http://api.steampowered.com/ISteamApps/GetAppList/v2"))
   if data.size == 0
     puts "Refresh failed!"
     say(event, "Refresh failed!")
     return false
   end
-  open("/usr/bin/saatchi/applist.txt", "wb") { |f| f.write(data) }
+  open("/home/pi/satchii/applist.txt", "wb") { |f| f.write(data) }
   puts "Success."
-  say(event, "Success.")
-  say(event, "Reloading DB.")
+  #say(event, "Success.")
+  #say(event, "Reloading DB.")
   loadApps
   return true
 end
@@ -146,7 +159,7 @@ end
 def loadCredentials
   puts "Loading credentials."
   lines = []
-  open("/usr/bin/saatchi/credentials.dat", "rb") { |f| lines = f.readlines }
+  open("/home/pi/satchii/credentials.dat", "rb") { |f| lines = f.readlines }
   for line in lines
     line.chomp!
   end
@@ -171,9 +184,9 @@ end
 
 bot = startup
 
-bot.command(:anime, { :description => "Searches MAL for your query (Ex: #{$COMMAND_TOKEN}anime dennou coil)" }) do |event, *args|
+bot.command(:anime, { :description => "Searches Anime Planet for your query (Ex: #{$COMMAND_TOKEN}anime dennou coil)" }) do |event, *args|
   puts "#{Time.now} - #{event.author.name}: anime #{args.join(' ')}"
-  say(event, searchAP(ERB::Util.url_encode(args.join(' '))))
+  say(event, searchAP(args.join('+')))
   nil
 end
 
@@ -203,7 +216,7 @@ end
 
 bot.command(:steam, { :description => "Searches Steam for a title. (Ex: #{$COMMAND_TOKEN}steam crosscode)" }) do |event, *args|
   puts "#{Time.now} - #{event.author.name}: steam #{args.join(' ')}"
-  refreshDB(event) if Time.now > (File.mtime("/usr/bin/saatchi/applist.txt") + (60 * 60 * 12))
+  refreshDB(event) if Time.now > (File.mtime("/home/pi/satchii/applist.txt") + (60 * 60 * 12))
   say(event, searchApps(ERB::Util.url_encode(args.join(' '))))
   nil
 end
@@ -252,27 +265,51 @@ bot.command(:twirl,  { :help_available => false,  :permission_level => 10 }) do 
   nil
 end
 
-bot.command(:del, { :help_available => false,  :permission_level => 10 }) do |event|
-  hist = event.channel.history(100)
-    
-  for post in hist
-    if post.from_bot?
-      post.delete()
-      break
+bot.command(:del, { :help_available => false,  :permission_level => 10 }) do |event, *args|
+  num = args[0].to_i
+  if args.empty?
+    num = 1
+  end
+  
+  num.times do
+    hist = event.channel.history(100)
+
+    for post in hist
+      if post.from_bot?
+        post.delete()
+        break
+      end
     end
   end
       
   nil
 end
 
+$INSPIRE_TIMER = Time.now
+
+
+bot.command(:inspire, {:description => "Genreate and post an inspirational poster from InspiroBot.me"}) do |event, *args|
+  now = Time.now
+  
+  if now < $INSPIRE_TIMER + $INSPIRE_DELAY_SECONDS
+    event.respond("Please slow down.")
+    return nil
+  end
+  
+  event.respond(inspire)
+  $INSPIRE_TIMER = now
+  nil
+end
+
 bot.run_async
-#Discordrb::API.change_own_nickname($token, $chans[0].server, "Satchii")
 bot.game = $COMMAND_TOKEN + "help for commands"
 $chans = []
 for room in $AUTHED_ROOMS
   $chans += bot.find_channel(room)
 end
 bot.send_message($chans[0], "Boku Satchii! Yoroshiku ne?") unless $chans.empty?
+#sleep(2)
+#bot.send_message($chans[0], "TexBot! Yoroshiku!") unless $chans.empty?
 
 $run = true
 while $run
